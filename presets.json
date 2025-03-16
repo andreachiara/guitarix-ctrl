@@ -1,0 +1,18 @@
+{
+    "version": 1,
+    "default": {
+        "switches": [
+            "aclipper.on_off"
+        ]
+    },
+    "banks": {
+        "mine": {
+            "default": {
+                "switches": [
+                    "aclipper.on_off"
+                ],
+                "pots": []
+            }
+        }
+    }
+}
