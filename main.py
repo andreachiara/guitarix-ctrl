@@ -4,6 +4,7 @@
 guitarix_pgm = "guitarix -p 7000"
 
 import socket, json, os, time, serial, json
+import serial.tools.list_ports
 
 class RpcNotification:
 
@@ -143,27 +144,52 @@ def refresh_paramlist(sock):
         parameterlist.append(d["id"])
     parameterlist.sort()
 
-def init_serial():
-    ser = serial.Serial(
-        port='/dev/ttyUSB0',
-        baudrate=115200,
-        parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE,
-        bytesize=serial.EIGHTBITS,
-        timeout=1
-    )
-    return ser
+def init_serial(serial_port = ""):
+    while serial_port == "":
+        ports = serial.tools.list_ports.comports()
+
+        for port, desc, hwid in sorted(ports):
+            #print("{}: {} [{}]".format(port, desc, hwid))
+            if "CP2102 USB to UART" in desc:
+                serial_port = port
+    while True:
+        try:
+            ser = serial.Serial(
+                port=serial_port,
+                baudrate=115200,
+                parity=serial.PARITY_NONE,
+                stopbits=serial.STOPBITS_ONE,
+                bytesize=serial.EIGHTBITS,
+                timeout=1
+            )
+        except:
+            print("uh oh, no serial device found on [" + serial_port + "], will retry...")
+        else:
+            return ser
 
 def read_serial(ser):
     while True:
-        read = ser.readline()
-        decoded_str = read.decode()
-        if len(decoded_str) != 0 and decoded_str[0] == '{':
-            data = json.loads(read)
-            #print(data)
-            return data
-            #time.sleep(1)
+        try:
+            read = ser.readline()
+            decoded_str = read.decode()
+            if len(decoded_str) != 0 and decoded_str[0] == '{':
+                data = json.loads(read)
+                #print(data)
+                return data
+            else:
+                print(read)
+        except:
+            print("Serial error, will not retry for now")
+            raise
+            return
 
+def convert_pedal_names(name_as_received):
+    with open('names.json') as names_f:
+        names = json.load(names_f)
+        if name_as_received in names:
+            return names[name_as_received]
+        else:
+            return name_as_received
 
 def main():
     print("starting ctrlpdl host")
@@ -196,13 +222,8 @@ def main():
     print(sock.receive().result)
     # set new value for a parameter
     sock.notify("set", ['wah.freq', 50])
-    while True:
-        try:
-            ser = init_serial()
-        except:
-            print("uh oh, no serial device found on the specified port, retrying...")
-        else:
-            break
+
+    ser = init_serial()
 
     sock.get_banks()
     sock.print_current_preset()
@@ -228,11 +249,15 @@ def main():
             else:
                 curr_effects_arr = presets_data["banks"][preset_tuple[0]][preset_tuple[1]]["switches"]
 
-            #print(curr_effects_arr)
+           #print(curr_effects_arr)
                 
 
-            
-            json_data = read_serial(ser)
+            try:
+                json_data = read_serial(ser)
+            except:
+                print("serial_error")
+                ser = init_serial()
+                continue
             for i in range(0, len(curr_effects_arr)):
                 data_tmp = json_data["pedals"][i]
                 #print("eff: " + curr_effects_arr[i] + " val: " + str(data_tmp))
@@ -255,6 +280,23 @@ def main():
                 sock.notify("set", ['engine.next_preset',1])
             elif json_data["ui_action"] == "pxps":
                 sock.notify("set", ['engine.previus_preset',1])
+
+            data_to_pedalboard = {}
+            data_to_pedalboard['pedals_onoff'] = list()
+            data_to_pedalboard['bank'] = ""
+            data_to_pedalboard['preset'] = ""
+            for effect in curr_effects_arr:
+                sock.call("get", [effect]);
+                tmpbuf = list(sock.receive().result.items())
+                data_to_pedalboard['pedals_onoff'].append({'name' : convert_pedal_names(tmpbuf[0][0]), 'val' : tmpbuf[0][1]})
+
+            data_to_pedalboard['bank'] = preset_tuple[0]
+            data_to_pedalboard['preset'] = preset_tuple[1]
+
+            buf_to_write = json.dumps(data_to_pedalboard)
+            #print(buf_to_write)
+            ser.write(bytes(buf_to_write, 'utf-8'))
+            
             #print(type(json_data["pedals"][0]))
             #print(json_data["pedals"][0])
             #refresh_paramlist(sock)
