@@ -10,6 +10,10 @@
             "default": {
                 "switches": [
                     "aclipper.on_off"
+                    "",
+                    "",
+                    "dubber.rec1",
+                    "dubber.play1"
                 ],
                 "pots": []
             }
