@@ -177,8 +177,8 @@ def read_serial(ser):
                 data = json.loads(read)
                 #print(data)
                 return data
-            else:
-                print(read)
+            #else:
+            #    print(read)
         except:
             print("Serial error, will not retry for now")
             raise
@@ -225,7 +225,7 @@ def main():
     # print out parameterlist
     for i in parameterlist:
         print(i)
-    if (sys.argv[1] == 'listen'):
+    if (len(sys.argv)>=2 and sys.argv[1] == 'listen'):
         return listener(sock)
     
     # get current value of a parameter
@@ -295,6 +295,9 @@ def main():
             data_to_pedalboard['bank'] = ""
             data_to_pedalboard['preset'] = ""
             for effect in curr_effects_arr:
+                if effect == '':
+                    data_to_pedalboard['pedals_onoff'].append({'name' : 'NO_DAT', 'val' : 0})
+                    continue
                 sock.call("get", [effect]);
                 tmpbuf = list(sock.receive().result.items())
                 data_to_pedalboard['pedals_onoff'].append({'name' : convert_pedal_names(tmpbuf[0][0]), 'val' : tmpbuf[0][1]})

@@ -2,14 +2,18 @@
     "version": 1,
     "default": {
         "switches": [
-            "aclipper.on_off"
+            "aclipper.on_off",
+            "",
+            "",
+            "dubber.rec1",
+            "dubber.play1"
         ]
     },
     "banks": {
         "mine": {
             "default": {
                 "switches": [
-                    "aclipper.on_off"
+                    "aclipper.on_off",
                     "",
                     "",
                     "dubber.rec1",
