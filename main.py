@@ -5,6 +5,7 @@ guitarix_pgm = "guitarix -p 7000"
 
 import socket, json, os, time, serial, json
 import serial.tools.list_ports
+import sys
 
 class RpcNotification:
 
@@ -190,7 +191,15 @@ def convert_pedal_names(name_as_received):
             return names[name_as_received]
         else:
             return name_as_received
-
+        
+def listener(sock):
+    # and now listen to all parameter changes 
+    sock.notify("listen",['all'])
+    while sock:
+        if sock.receive() == None:
+            print("Error: sock.receive is nonw")
+            break
+        
 def main():
     print("starting ctrlpdl host")
     #start guitarix with rpc port at 7000
@@ -216,6 +225,8 @@ def main():
     # print out parameterlist
     for i in parameterlist:
         print(i)
+    if (sys.argv[1] == 'listen'):
+        return listener(sock)
     
     # get current value of a parameter
     sock.call("get", ['wah.freq'])
@@ -230,8 +241,6 @@ def main():
     next_bank = 0
     sock.notify("setpreset", [sock.banks[next_bank], sock.presets[next_bank][0]])
     next_bank = next_bank + 1
-    # and now listen to all parameter changes 
-    #sock.notify("listen",['all'])
 
     with open('presets.json') as presets_file:
         presets_data = json.load(presets_file)
@@ -301,9 +310,6 @@ def main():
             #print(json_data["pedals"][0])
             #refresh_paramlist(sock)
             #print("before")
-            #if sock.receive() == None:
-            #    print("Error: sock.receive is nonw")
-            #    break
             #print("after")
 
     print("you could say I'm... out of the loop :p")
